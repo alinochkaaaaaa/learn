@@ -67,6 +67,8 @@ public class Main {
         System.out.println("2 - Текущее время");
         System.out.println("3 - Текущая дата");
         System.out.println("4 - Вернуться назад");
+        System.out.println();
+        System.out.println("help - Показать справку по командам");
 
         String choice = scanner.nextLine();
         handleMenuChoice(choice);
@@ -88,8 +90,11 @@ public class Main {
             case "4":
                 System.out.println("Возврат в главное меню...");
                 break;
+            case "help":
+                handleHelp();
+                break;
             default:
-                System.out.println("Неверный выбор. Пожалуйста, выберите от 1 до 4");
+                System.out.println("Неверный выбор. Пожалуйста, введите одну из доступных команд");
         }
     }
 
