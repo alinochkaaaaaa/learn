@@ -1,4 +1,4 @@
-package test.org;
+package org;
 
 import org.CommandProcessor;
 import org.InputProvider;

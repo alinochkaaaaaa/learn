@@ -10,15 +10,12 @@ public class MenuManager {
     }
 
     public void showMenu() {
-        // Используем Text Block вместо StringBuilder
-        String menu = """
-                Меню:
-                1 - Информация о боте
-                2 - Текущее время
-                3 - Текущая дата
-                4 - Вернуться назад
-                
-                help - Показать справку по командам""";
+        String menu = "Меню:\n" +
+                "1 - Информация о боте\n" +
+                "2 - Текущее время\n" +
+                "3 - Текущая дата\n" +
+                "4 - Вернуться назад\n\n" +
+                "help - Показать справку по командам";
         outputProvider.outputMenu(menu);
     }
 
