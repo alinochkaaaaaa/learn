@@ -30,12 +30,11 @@ public class CommandProcessor {
                 outputProvider.output("Вы запустили консольного бота. Введите 'help' для списка команд.");
                 break;
             case "help":
-                outputProvider.output("""
-                        Доступные команды:
-                        - start: Запуск бота
-                        - help: Справка
-                        - menu: Показать меню
-                        - exit: Выход""");
+                outputProvider.output("Доступные команды:\n" +
+                        "- start: Запуск бота\n" +
+                        "- help: Справка\n" +
+                        "- menu: Показать меню\n" +
+                        "- exit: Выход");
                 break;
             case "exit":
                 outputProvider.output("Выход из программы...");
