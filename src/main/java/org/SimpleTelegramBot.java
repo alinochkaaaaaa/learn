@@ -23,9 +23,9 @@ public class SimpleTelegramBot {
     }
 
     public void start() {
-        System.out.println("🤖 Запуск Telegram бота...");
-        Thread botThread = new Thread(this::pollUpdates);
-        botThread.setDaemon(true);
+        System.out.println("Запуск Telegram бота...");
+        Thread botThread = new Thread(this::pollUpdates); //Создание нового потока с именем botThread
+        botThread.setDaemon(true); //если основное приложение завершится, бот тоже остановится
         botThread.start();
     }
 
@@ -34,20 +34,21 @@ public class SimpleTelegramBot {
     }
 
     private void pollUpdates() {
-        int lastUpdateId = 0;
+        int lastUpdateId = 0; //для отслеживания ID последнего обработанного обновления
 
         while (running) {
             try {
                 String updatesJson = sendGetRequest("getUpdates?offset=" + (lastUpdateId + 1) + "&timeout=30");
+                //обновления с ID больше последнего, long-polling: ждем до 30 секунд для новых сообщений
 
-                // Простой парсинг JSON без библиотек
+                // ответ API и получение массива обновлений
                 if (updatesJson.contains("\"ok\":true") && updatesJson.contains("\"result\":")) {
                     String[] updates = updatesJson.split("\"update_id\"");
 
                     for (int i = 1; i < updates.length; i++) {
                         String update = updates[i];
 
-                        // Извлекаем update_id
+                        // update_id
                         int idStart = update.indexOf(":") + 1;
                         int idEnd = update.indexOf(",", idStart);
                         if (idEnd == -1) idEnd = update.indexOf("}", idStart);
@@ -92,16 +93,18 @@ public class SimpleTelegramBot {
 
             System.out.println("📨 Получено сообщение: " + text + " от " + chatId);
 
-            // Обрабатываем специальные команды
+            // Устанавливаем текущий chatId
+            outputProvider.setCurrentChatId(chatId);
+
+            // Обрабатываем команду /start отдельно для показа главного меню
             if ("/start".equals(text)) {
-                outputProvider.setCurrentChatId(chatId);
-                outputProvider.output("Добро пожаловать! Я ваш бот. Введите команду или 'help' для помощи.");
+                outputProvider.output("Добро пожаловать! Я ваш бот.");
+                outputProvider.showMainMenu("Главное меню - выберите действие:");
                 return;
             }
 
             // Передаем ввод в основную логику
             inputProvider.addInput(text, chatId);
-            outputProvider.setCurrentChatId(chatId);
 
             // Запускаем обработку команды в отдельном потоке
             if (processor != null) {
@@ -112,6 +115,7 @@ public class SimpleTelegramBot {
 
         } catch (Exception e) {
             System.err.println("Ошибка обработки сообщения: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -120,6 +124,8 @@ public class SimpleTelegramBot {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
+        conn.setConnectTimeout(30000);
+        conn.setReadTimeout(30000);
 
         StringBuilder response = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(
@@ -128,6 +134,19 @@ public class SimpleTelegramBot {
             while ((line = reader.readLine()) != null) {
                 response.append(line);
             }
+        } catch (IOException e) {
+            // Читаем ошибку если есть
+            try (BufferedReader errorReader = new BufferedReader(
+                    new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = errorReader.readLine()) != null) {
+                    response.append(line);
+                }
+            } catch (Exception ex) {
+                response.append("{\"ok\":false,\"error\":\"").append(e.getMessage()).append("\"}");
+            }
+        } finally {
+            conn.disconnect();
         }
 
         return response.toString();

@@ -1,14 +1,11 @@
 package org;
 
 public class CommandProcessor {
-    private InputProvider inputProvider;
-    private OutputProvider outputProvider;
-    private MenuManager menuManager;
+    private final OutputProvider outputProvider;
+    private final MenuManager menuManager;
     private boolean isRunning = true;
-    private boolean inMenuMode = false;
 
     public CommandProcessor(InputProvider inputProvider, OutputProvider outputProvider, MenuManager menuManager) {
-        this.inputProvider = inputProvider;
         this.outputProvider = outputProvider;
         this.menuManager = menuManager;
     }
@@ -18,58 +15,54 @@ public class CommandProcessor {
             return;
         }
 
-        // Если мы в режиме меню, обрабатываем выбор меню
-        if (inMenuMode) {
-            handleMenuCommand(command);
-            return;
-        }
-
-        // Обработка основных команд
         switch (command.toLowerCase()) {
+            case "/start":
             case "start":
-                outputProvider.output("Вы запустили консольного бота. Введите 'help' для списка команд.");
+                outputProvider.output("\uD83D\uDE80 Вы запустили консольного бота!");
+                showMainMenu();
                 break;
+            case "/help":
             case "help":
-                outputProvider.output("Доступные команды:\n" +
-                        "- start: Запуск бота\n" +
-                        "- help: Справка\n" +
-                        "- menu: Показать меню\n" +
-                        "- exit: Выход");
+                outputProvider.output("Информация о боте: Это телеграмм бот для демонстрации планирования задач.");
+                showMainMenu();
                 break;
+            case "/menu":
+            case "menu":
+                menuManager.showMenu();
+                break;
+            case "/exit":
             case "exit":
-                outputProvider.output("Выход из программы...");
+                outputProvider.output("\uD83D\uDC4B Выход из программы...");
                 isRunning = false;
                 break;
-            case "menu":
-                outputProvider.output("Открытие меню...");
-                menuManager.showMenu(); // Только показываем меню
-                inMenuMode = true;      // Переходим в режим меню для обработки следующего ввода
+            case "1":
+                outputProvider.output("Информация о боте: Это телеграмм бот для планирования.");
+                menuManager.showMenu();
+                break;
+            case "2":
+                outputProvider.output("Текущее время: " + java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")));
+                menuManager.showMenu();
+                break;
+            case "3":
+                outputProvider.output("Текущая дата: " + java.time.LocalDate.now());
+                menuManager.showMenu();
+                break;
+            case "4":
+                showMainMenu();
                 break;
             default:
-                outputProvider.output("Неизвестная команда: " + command + ". Введите 'help' для списка доступных команд.");
+                outputProvider.output("Неизвестная команда: " + command + ". Используйте кнопки меню.");
+                showMainMenu();
                 break;
         }
     }
 
-    private void handleMenuCommand(String command) {
-        // Обрабатываем выбор в меню
-        menuManager.processMenuChoice(command);
-
-        // Выходим из режима меню только если выбрана опция 4 ("Вернуться назад")
-        if (command.equals("4")) {
-            inMenuMode = false;
-            outputProvider.output("Возврат в главное меню. Введите 'help' для списка команд.");
-        } else {
-            // Если не вышли, продолжаем показывать меню
-            menuManager.showMenu();
-        }
+    private void showMainMenu() {
+        String mainMenu = "Главное меню - выберите действие:";
+        outputProvider.showMainMenu(mainMenu);
     }
 
     public boolean isRunning() {
         return isRunning;
-    }
-
-    public boolean isInMenuMode() {
-        return inMenuMode;
     }
 }

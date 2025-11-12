@@ -6,38 +6,10 @@ public class Main {
     public static void main(String[] args) {
         if (args.length > 0 && "telegram".equals(args[0])) {
             startTelegramBot();
-        } else {
-            startConsoleBot();
         }
-    }
-
-    private static void startConsoleBot() {
-        InputProvider inputProvider = new ConsoleInputProvider();
-        OutputProvider outputProvider = new ConsoleOutputProvider();
-        MenuManager menuManager = new MenuManager(inputProvider, outputProvider);
-        CommandProcessor processor = new CommandProcessor(inputProvider, outputProvider, menuManager);
-
-        outputProvider.output("Добро пожаловать! Введите 'start' для начала или 'help' для помощи.");
-
-        while (processor.isRunning()) {
-            if (inputProvider.hasInput()) {
-                String command = inputProvider.getInput();
-                processor.processCommand(command);
-            }
-
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
-
-        outputProvider.output("Программа завершена.");
     }
 
     private static void startTelegramBot() {
-
 
         TelegramInputProvider telegramInput = new TelegramInputProvider();
         TelegramOutputProvider telegramOutput = new TelegramOutputProvider(BOT_TOKEN);
@@ -49,13 +21,13 @@ public class Main {
         bot.setProcessor(processor);
         bot.start();
 
-        System.out.println("✅ Telegram бот запущен! Нажмите Ctrl+C для остановки.");
+        System.out.println("Telegram бот запущен!");
 
         // Держим main поток alive
         try {
-            Thread.currentThread().join();
+            Thread.currentThread().join(); //поток ждет завершения самого себя
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            Thread.currentThread().interrupt(); //прерывание потока
             bot.stop();
         }
     }
