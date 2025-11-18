@@ -25,7 +25,9 @@ public class TelegramOutputProvider implements OutputProvider {
 
     @Override
     public void outputMenu(String menu) {
-
+        if (currentChatId != null) {
+            sendTelegramMessageWithMenu(currentChatId, menu);
+        }
     }
 
     @Override
@@ -33,10 +35,40 @@ public class TelegramOutputProvider implements OutputProvider {
         output(message);
     }
 
+    @Override
+    public void showMainMenu(String message) {
+        if (currentChatId != null) {
+            sendTelegramMessageWithMainMenu(currentChatId, message);
+        }
+    }
+
     private void sendTelegramMessage(Long chatId, String text) {
+        sendTelegramMessage(chatId, text, null);
+    }
+
+    private void sendTelegramMessageWithMainMenu(Long chatId, String text) {
+        String keyboard = "{\"keyboard\":[[\"start\",\"menu\"],[\"help\",\"exit\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+        sendTelegramMessage(chatId, text, keyboard);
+    }
+
+    private void sendTelegramMessageWithMenu(Long chatId, String text) {
+        String keyboard = "{\"keyboard\":[[\"1\",\"2\"],[\"3\",\"4\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+        sendTelegramMessage(chatId, text, keyboard);
+    }
+
+    private void sendTelegramMessage(Long chatId, String text, String replyMarkup) {
         try {
             String urlString = "https://api.telegram.org/bot" + botToken + "/sendMessage";
-            String postData = "chat_id=" + chatId + "&text=" + URLEncoder.encode(text, StandardCharsets.UTF_8.name());
+
+            StringBuilder postDataBuilder = new StringBuilder();
+            postDataBuilder.append("chat_id=").append(chatId)
+                    .append("&text=").append(URLEncoder.encode(text, StandardCharsets.UTF_8.name()));
+
+            if (replyMarkup != null) {
+                postDataBuilder.append("&reply_markup=").append(URLEncoder.encode(replyMarkup, StandardCharsets.UTF_8.name()));
+            }
+
+            String postData = postDataBuilder.toString();
 
             URL url = new URL(urlString);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -52,12 +84,24 @@ public class TelegramOutputProvider implements OutputProvider {
             int responseCode = conn.getResponseCode();
             if (responseCode != 200) {
                 System.err.println("Ошибка отправки сообщения в Telegram: " + responseCode);
+
+                // Читаем ошибку
+                try (BufferedReader errorReader = new BufferedReader(
+                        new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                    String errorLine;
+                    StringBuilder errorResponse = new StringBuilder();
+                    while ((errorLine = errorReader.readLine()) != null) {
+                        errorResponse.append(errorLine);
+                    }
+                    System.err.println("Детали ошибки: " + errorResponse.toString());
+                }
             }
 
             conn.disconnect();
 
         } catch (Exception e) {
             System.err.println("Ошибка при отправке сообщения: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
