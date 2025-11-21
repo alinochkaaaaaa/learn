@@ -3,6 +3,7 @@ package org;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 public class TelegramOutputProvider implements OutputProvider {
     private final String botToken;
@@ -19,7 +20,7 @@ public class TelegramOutputProvider implements OutputProvider {
     @Override
     public void output(String message) {
         if (currentChatId != null) {
-            sendTelegramMessage(currentChatId, message);
+            sendTelegramMessage(currentChatId, message, null);
         }
     }
 
@@ -40,20 +41,6 @@ public class TelegramOutputProvider implements OutputProvider {
         if (currentChatId != null) {
             sendTelegramMessageWithMainMenu(currentChatId, message);
         }
-    }
-
-    private void sendTelegramMessage(Long chatId, String text) {
-        sendTelegramMessage(chatId, text, null);
-    }
-
-    private void sendTelegramMessageWithMainMenu(Long chatId, String text) {
-        String keyboard = "{\"keyboard\":[[\"start\",\"menu\"],[\"help\",\"exit\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
-        sendTelegramMessage(chatId, text, keyboard);
-    }
-
-    private void sendTelegramMessageWithMenu(Long chatId, String text) {
-        String keyboard = "{\"keyboard\":[[\"1\",\"2\"],[\"3\",\"4\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
-        sendTelegramMessage(chatId, text, keyboard);
     }
 
     private void sendTelegramMessage(Long chatId, String text, String replyMarkup) {
@@ -84,8 +71,6 @@ public class TelegramOutputProvider implements OutputProvider {
             int responseCode = conn.getResponseCode();
             if (responseCode != 200) {
                 System.err.println("Ошибка отправки сообщения в Telegram: " + responseCode);
-
-                // Читаем ошибку
                 try (BufferedReader errorReader = new BufferedReader(
                         new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
                     String errorLine;
@@ -103,5 +88,16 @@ public class TelegramOutputProvider implements OutputProvider {
             System.err.println("Ошибка при отправке сообщения: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    private void sendTelegramMessageWithMainMenu(Long chatId, String text) {
+        String keyboard = "{\"keyboard\":[[\"Старт\",\"Меню\"],[\"Помощь\",\"Выход\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+        sendTelegramMessage(chatId, text, keyboard);
+    }
+
+
+    private void sendTelegramMessageWithMenu(Long chatId, String text) {
+        String keyboard = "{\"keyboard\":[[\"Информация\",\"Создать напоминание\"],[\"Мои напоминания\",\"Назад\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+        sendTelegramMessage(chatId, text, keyboard);
     }
 }
