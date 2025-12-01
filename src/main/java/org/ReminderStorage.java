@@ -2,26 +2,51 @@ package org;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ReminderStorage {
-    private static final List<Reminder> reminders = new ArrayList<>();
+    private static ReminderRepository repository;
+
+    public static void initialize(String connectionString) {
+        try {
+            repository = new ReminderRepository(connectionString);
+            System.out.println("✅ ReminderStorage успешно инициализирован");
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка инициализации ReminderStorage: " + e.getMessage());
+            throw new RuntimeException("Не удалось инициализировать ReminderStorage", e);
+        }
+    }
 
     public static void add(Reminder reminder) {
-        reminders.add(reminder);
+        if (repository == null) {
+            throw new IllegalStateException("ReminderStorage не инициализирован. Вызовите initialize() сначала.");
+        }
+        repository.save(reminder);
+        System.out.println(" Напоминание сохранено в базу данных: " + reminder.getMessage());
     }
 
     public static List<Reminder> getAllByChatId(long chatId) {
-        return reminders.stream()
-                .filter(r -> r.getChatId() == chatId)
-                .collect(Collectors.toList());
+        if (repository == null) {
+            throw new IllegalStateException("ReminderStorage не инициализирован. Вызовите initialize() сначала.");
+        }
+        List<Reminder> reminders = repository.findActiveByChatId(chatId);
+        System.out.println("📋 Загружено напоминаний для chatId " + chatId + ": " + reminders.size());
+        return reminders;
     }
 
-    public static List<Reminder> getAll() {
-        return new ArrayList<>(reminders);
+    public static List<Reminder> getAllActive() {
+        if (repository == null) {
+            throw new IllegalStateException("ReminderStorage не инициализирован. Вызовите initialize() сначала.");
+        }
+        List<Reminder> reminders = repository.findAllActive();
+        System.out.println("📋 Всего активных напоминаний в базе: " + reminders.size());
+        return reminders;
     }
 
-    public static void clear() {
-        reminders.clear();
+    public static void markAsCompleted(Reminder reminder) {
+        if (repository == null) {
+            throw new IllegalStateException("ReminderStorage не инициализирован. Вызовите initialize() сначала.");
+        }
+        repository.markAsCompleted(reminder);
+        System.out.println("✅ Напоминание отмечено как выполненное: " + reminder.getMessage());
     }
 }

@@ -1,9 +1,12 @@
 package org;
 
+import java.time.format.DateTimeFormatter;
+
 public class CommandProcessor {
     private final OutputProvider outputProvider;
     private final MenuManager menuManager;
     private final ReminderScheduler reminderScheduler;
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
     private boolean isRunning = true;
 
     public CommandProcessor(
@@ -24,6 +27,9 @@ public class CommandProcessor {
         UserState state = UserSession.getState(chatId);
         String cmd = command.trim();
 
+        System.out.println(" Обработка команды: \"" + cmd + "\" от chatId " + chatId +
+                ", состояние: " + state);
+
         switch (state) {
             case MAIN_MENU:
                 handleMainMenu(cmd, chatId);
@@ -41,7 +47,6 @@ public class CommandProcessor {
         if (input == null) return "";
         String normalized = input.trim().toLowerCase();
 
-        // Замена Unicode-кодов на текст (если декодирование не сработало)
         normalized = normalized
                 .replace("\u041c\u0435\u043d\u044e", "меню")
                 .replace("\u0421\u0442\u0430\u0440\u0442", "старт")
@@ -58,44 +63,77 @@ public class CommandProcessor {
     private void handleMainMenu(String command, long chatId) {
         String normalized = normalize(command);
 
-        if ("старт".equals(normalized)) {
-            outputProvider.output("Добро пожаловать! Я ваш бот.");
-            outputProvider.showMainMenu("Главное меню - выберите действие:");
+        if ("старт".equals(normalized) || "/start".equalsIgnoreCase(command)) {
+            outputProvider.output(" Добро пожаловать! Я ваш бот.");
+            outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
             UserSession.setState(chatId, UserState.MAIN_MENU);
         } else if ("меню".equals(normalized)) {
             menuManager.showMenu();
             UserSession.setState(chatId, UserState.IN_MENU);
-        } else if ("помощь".equals(normalized)) {
-            outputProvider.output("Это Telegram-бот для создания и управления напоминаниями. Используйте кнопки для навигации.");
-            outputProvider.showMainMenu("Главное меню - выберите действие:");
-        } else if ("выход".equals(normalized)) {
-            outputProvider.output("Завершение работы бота...");
+        } else if ("помощь".equals(normalized) || "/help".equalsIgnoreCase(command)) {
+            outputProvider.output("📚 Справка по боту:");
+            outputProvider.output(" Используйте кнопки меню для навигации. Для создания напоминания используйте формат:");
+            outputProvider.output("  напомни [дата] [время] [сообщение]");
+            outputProvider.output("📌 Примеры: \n" +
+                    "• напомни через 5 минут выпить воды \n" +
+                    "• напомни завтра в 15:00 позвонить маме");
+            outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
+        } else if ("выход".equals(normalized) || "/exit".equalsIgnoreCase(command)) {
+            outputProvider.output("👋 Завершение работы бота...");
             isRunning = false;
         } else {
-            outputProvider.output("Неизвестная команда. Используйте кнопки меню.");
-            outputProvider.showMainMenu("Главное меню - выберите действие:");
+            outputProvider.output(" Неизвестная команда. Используйте кнопки меню.");
+            outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
         }
     }
 
     private void handleCreateReminder(String command, long chatId) {
         try {
-            ReminderParser.Result result = ReminderParser.parse(command);
-            if (result != null && result.getTriggerTime() != null) {
+            ReminderParser.ParseResult result = ReminderParser.parse(command);
+
+            if (result != null && result.getTriggerTime() != null && !result.getText().isEmpty()) {
                 Reminder reminder = new Reminder(chatId, result.getText(), result.getTriggerTime());
-                ReminderStorage.add(reminder);
-                reminderScheduler.schedule(reminder, (TelegramOutputProvider) outputProvider);
 
-                outputProvider.output("Напоминание установлено на " +
-                        result.getTriggerTime().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) +
-                        ": \"" + result.getText() + "\"");
+                try {
+                    // Сохраняем в базу данных
+                    ReminderStorage.add(reminder);
 
-                menuManager.showMenu();
-                UserSession.setState(chatId, UserState.IN_MENU);
+                    // Планируем отправку
+                    reminderScheduler.schedule(reminder);
+
+                    String formattedTime = result.getTriggerTime().format(DATE_TIME_FORMATTER);
+                    outputProvider.output("✅ Напоминание успешно установлено!");
+                    outputProvider.output(" Дата и время: " + formattedTime);
+                    outputProvider.output(" Текст: \"" + result.getText() + "\"");
+                    outputProvider.output("⏰ Я напомню вам в указанное время.");
+
+                    // сколько напоминаний у пользователя сейчас
+                    var allReminders = ReminderStorage.getAllByChatId(chatId);
+                    System.out.println(" Всего напоминаний у пользователя " + chatId + ": " + allReminders.size());
+                    for (Reminder r : allReminders) {
+                        System.out.println("  - " + r.getTriggerTime() + ": " + r.getMessage());
+                    }
+
+                    menuManager.showMenu();
+                    UserSession.setState(chatId, UserState.IN_MENU);
+
+                } catch (Exception e) {
+                    System.err.println("❌ Ошибка при сохранении напоминания: " + e.getMessage());
+                    e.printStackTrace();
+                    outputProvider.output("❌ Ошибка при сохранении напоминания: " + e.getMessage());
+                    outputProvider.output("Попробуйте снова или обратитесь к администратору.");
+                }
             } else {
-                outputProvider.output("Не удалось распознать напоминание.\nФормат: напомни [дата] [время] [сообщение]\nПример: напомни завтра в 15:00 позвонить маме");
+                outputProvider.output("❌ Не удалось распознать напоминание.");
+                outputProvider.output(" Формат: напомни [дата] [время] [сообщение]");
+                outputProvider.output("📌 Примеры: \n" +
+                        "• напомни через 5 минут выпить воды \n" +
+                        "• напомни завтра в 15:00 позвонить маме");
             }
         } catch (Exception e) {
-            outputProvider.output("Ошибка при обработке напоминания. Попробуйте снова.");
+            System.err.println("❌ Ошибка при обработке напоминания: " + e.getMessage());
+            e.printStackTrace();
+            outputProvider.output("⚠ Произошла ошибка. Попробуйте снова.");
         }
     }
 
