@@ -24,4 +24,13 @@ public class Reminder {
     public LocalDateTime getTriggerTime() {
         return triggerTime;
     }
+
+    @Override
+    public String toString() {
+        return "Reminder{" +
+                "chatId=" + chatId +
+                ", message='" + message + '\'' +
+                ", triggerTime=" + triggerTime +
+                '}';
+    }
 }

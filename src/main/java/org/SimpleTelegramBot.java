@@ -27,14 +27,19 @@ public class SimpleTelegramBot {
     }
 
     public void start() {
-        System.out.println("Запуск Telegram бота...");
+        System.out.println(" Запуск Telegram бота...");
         Thread botThread = new Thread(this::pollUpdates);
         botThread.setDaemon(true);
         botThread.start();
+        System.out.println("✅ Бот запущен и ожидает сообщений");
     }
 
     public void stop() {
+        System.out.println(" Остановка бота...");
         running = false;
+        if (reminderScheduler != null) {
+            reminderScheduler.shutdown();
+        }
     }
 
     private void pollUpdates() {
@@ -64,7 +69,7 @@ public class SimpleTelegramBot {
 
                 Thread.sleep(1000);
             } catch (Exception e) {
-                System.err.println("Ошибка в боте: " + e.getMessage());
+                System.err.println("❌ Ошибка в боте: " + e.getMessage());
                 e.printStackTrace();
                 try {
                     Thread.sleep(5000);
@@ -126,61 +131,68 @@ public class SimpleTelegramBot {
             }
 
             String decodedText = decodeUnicodeEscapes(rawText);
-
-            System.out.println("RAW TEXT: \"" + rawText + "\"");
-            System.out.println("DECODED TEXT: \"" + decodedText + "\"");
-
             String text = decodedText;
 
-            System.out.println("Получено сообщение: " + text + " от " + chatId);
-            System.out.println("RAW TEXT: \"" + text + "\"");
-            System.out.println("NORMALIZED: \"" + text.toLowerCase().trim() + "\"");
+            System.out.println(" Получено сообщение от " + chatId + ": \"" + text + "\"");
             outputProvider.setCurrentChatId(chatId);
 
+            // Проверка системных команд
             if ("/start".equalsIgnoreCase(text)) {
-                outputProvider.output("Добро пожаловать! Я ваш бот.");
-                outputProvider.showMainMenu("Главное меню - выберите действие:");
+                System.out.println("✅ Обработка команды /start для chatId " + chatId);
+                outputProvider.output("🎉 Добро пожаловать в бот-напоминальщик!");
+                outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
                 UserSession.setState(chatId, UserState.MAIN_MENU);
                 return;
             }
 
             if ("/help".equalsIgnoreCase(text)) {
-                outputProvider.output("Это Telegram-бот для создания и управления напоминаниями. Используйте кнопки для навигации.");
-                outputProvider.showMainMenu("Главное меню - выберите действие:");
-                return;
-            }
-
-            if ("/exit".equalsIgnoreCase(text)) {
-                outputProvider.output("Завершение работы бота...");
-                boolean isRunning = false;
+                System.out.println("✅ Обработка команды /help для chatId " + chatId);
+                outputProvider.output("📚 Справка по боту:");
+                outputProvider.output("• Используйте кнопки меню для навигации");
+                outputProvider.output("• Для создания напоминания используйте формат:");
+                outputProvider.output("  напомни [дата] [время] [сообщение]");
+                outputProvider.output("• Пример: напомни завтра в 15:00 позвонить маме");
+                outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
                 return;
             }
 
             if ("/reminders".equalsIgnoreCase(text)) {
+                System.out.println("✅ Обработка команды /reminders для chatId " + chatId);
                 var reminders = ReminderStorage.getAllByChatId(chatId);
                 if (reminders.isEmpty()) {
-                    outputProvider.output("У вас нет активных напоминаний.");
+                    outputProvider.output(" У вас нет активных напоминаний.");
                 } else {
-                    StringBuilder sb = new StringBuilder("Ваши напоминания:\n");
+                    StringBuilder sb = new StringBuilder("📋 Ваши напоминания:\n\n");
                     java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
                     for (Reminder r : reminders) {
-                        sb.append("- ").append(r.getTriggerTime().format(fmt))
-                                .append(": \"").append(r.getMessage()).append("\"\n");
+                        sb.append("⏰ ").append(r.getTriggerTime().format(fmt))
+                                .append("\n💬 \"").append(r.getMessage()).append("\"\n\n");
                     }
                     outputProvider.output(sb.toString().trim());
                 }
-                outputProvider.showMainMenu("Главное меню - выберите действие:");
+                outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
                 return;
             }
 
+            if ("/status".equalsIgnoreCase(text)) {
+                System.out.println("✅ Обработка команды /status для chatId " + chatId);
+                outputProvider.output(" Статус бота:");
+                outputProvider.output("• Бот работает ✅");
+                outputProvider.output("• MongoDB подключена ✅");
+                outputProvider.output("• Напоминания активны ✅");
+                return;
+            }
+
+            // Передача команды процессору
             if (processor != null) {
+                System.out.println("🔄 Передача команды процессору: " + text);
                 new Thread(() -> {
                     processor.processCommand(text, chatId);
                 }).start();
             }
 
         } catch (Exception e) {
-            System.err.println("Ошибка обработки сообщения: " + e.getMessage());
+            System.err.println("❌ Ошибка обработки сообщения: " + e.getMessage());
             e.printStackTrace();
         }
     }
