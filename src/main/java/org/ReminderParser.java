@@ -47,7 +47,6 @@ public class ReminderParser {
         LocalTime time = now.toLocalTime();
         String reminderText = "";
 
-        // 1. Проверяем формат "через X минут/часов/дней"
         Matcher relativeMatcher = RELATIVE_PATTERN.matcher(rest);
         if (relativeMatcher.matches()) {
             try {
@@ -76,7 +75,6 @@ public class ReminderParser {
             }
         }
 
-        // 2. Проверяем формат с конкретным временем "в HH:MM"
         Matcher timeMatcher = TIME_PATTERN.matcher(rest);
         if (timeMatcher.matches()) {
             try {
@@ -86,7 +84,6 @@ public class ReminderParser {
 
                 if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
                     time = LocalTime.of(hour, minute);
-                    // Если время уже прошло сегодня, планируем на завтра
                     if (time.isBefore(now.toLocalTime())) {
                         date = date.plusDays(1);
                         System.out.println("⏰ Время уже прошло, переношу на завтра");
@@ -104,7 +101,6 @@ public class ReminderParser {
             }
         }
 
-        // 3. Проверяем формат с относительной датой (сегодня, завтра, послезавтра)
         if (rest.startsWith("сегодня ")) {
             rest = rest.substring("сегодня ".length());
             date = LocalDate.now();
@@ -116,7 +112,6 @@ public class ReminderParser {
             date = LocalDate.now().plusDays(2);
         }
 
-        // 4. Проверяем формат с конкретной датой "DD.MM" или "DD.MM.YYYY"
         Matcher dateMatcher = DATE_PATTERN.matcher(rest);
         if (dateMatcher.find()) {
             try {
@@ -137,7 +132,6 @@ public class ReminderParser {
             }
         }
 
-        // 5. Пробуем извлечь время из оставшегося текста
         timeMatcher = TIME_PATTERN.matcher(rest);
         if (timeMatcher.matches()) {
             try {
@@ -155,12 +149,10 @@ public class ReminderParser {
                 System.err.println("❌ Ошибка парсинга времени: " + e.getMessage());
             }
         } else {
-            // Если время не указано, используем дефолтное 09:00
             time = DEFAULT_TIME;
             reminderText = rest;
         }
 
-        // Если текст напоминания пустой
         if (reminderText.isEmpty()) {
             System.err.println("❌ Текст напоминания пустой");
             return null;

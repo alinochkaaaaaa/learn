@@ -136,7 +136,6 @@ public class SimpleTelegramBot {
             System.out.println(" Получено сообщение от " + chatId + ": \"" + text + "\"");
             outputProvider.setCurrentChatId(chatId);
 
-            // Проверка системных команд
             if ("/start".equalsIgnoreCase(text)) {
                 System.out.println("✅ Обработка команды /start для chatId " + chatId);
                 outputProvider.output("🎉 Добро пожаловать в бот-напоминальщик!");
@@ -183,7 +182,6 @@ public class SimpleTelegramBot {
                 return;
             }
 
-            // Передача команды процессору
             if (processor != null) {
                 System.out.println("🔄 Передача команды процессору: " + text);
                 new Thread(() -> {
