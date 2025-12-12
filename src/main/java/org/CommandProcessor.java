@@ -27,7 +27,7 @@ public class CommandProcessor {
         UserState state = UserSession.getState(chatId);
         String cmd = command.trim();
 
-        System.out.println(" Обработка команды: \"" + cmd + "\" от chatId " + chatId +
+        System.out.println("Обработка команды: \"" + cmd + "\" от chatId " + chatId +
                 ", состояние: " + state);
 
         switch (state) {
@@ -39,6 +39,15 @@ public class CommandProcessor {
                 break;
             case CREATING_REMINDER:
                 handleCreateReminder(cmd, chatId);
+                break;
+            case VIEWING_REMINDERS:
+                menuManager.handleReminderSelection(cmd, chatId);
+                break;
+            case EDITING_REMINDER:
+                handleEditingReminderAction(cmd, chatId);
+                break;
+            case DELETING_REMINDER:
+                handleDeleteReminder(cmd, chatId);
                 break;
         }
     }
@@ -65,54 +74,51 @@ public class CommandProcessor {
 
         if ("старт".equals(normalized) || "/start".equalsIgnoreCase(command)) {
             outputProvider.output(" Добро пожаловать! Я ваш бот.");
-            outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
+            outputProvider.showMainMenu("\uD83C\uDFE0 Главное меню - выберите действие:");
             UserSession.setState(chatId, UserState.MAIN_MENU);
         } else if ("меню".equals(normalized)) {
             menuManager.showMenu();
             UserSession.setState(chatId, UserState.IN_MENU);
         } else if ("помощь".equals(normalized) || "/help".equalsIgnoreCase(command)) {
-            outputProvider.output("📚 Справка по боту:");
-            outputProvider.output(" Используйте кнопки меню для навигации. Для создания напоминания используйте формат:");
+            outputProvider.output("\uD83D\uDCDA Справка по боту:");
+            outputProvider.output("Используйте кнопки меню для навигации. Для создания напоминания используйте формат:");
             outputProvider.output("  напомни [дата] [время] [сообщение]");
-            outputProvider.output("📌 Примеры: \n" +
-                    "• напомни через 5 минут выпить воды \n" +
+            outputProvider.output("\uD83D\uDCCC Примеры:\n" +
+                    "• напомни через 5 минут выпить воды\n" +
                     "• напомни завтра в 15:00 позвонить маме");
-            outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
+            outputProvider.showMainMenu("\uD83C\uDFE0 Главное меню - выберите действие:");
         } else if ("выход".equals(normalized) || "/exit".equalsIgnoreCase(command)) {
-            outputProvider.output("👋 Завершение работы бота...");
+            outputProvider.output("\uD83D\uDC4B Завершение работы бота...");
             isRunning = false;
         } else {
-            outputProvider.output(" Неизвестная команда. Используйте кнопки меню.");
-            outputProvider.showMainMenu("🏠 Главное меню - выберите действие:");
+            outputProvider.output("❌ Неизвестная команда. Используйте кнопки меню.");
+            outputProvider.showMainMenu("\uD83C\uDFE0 Главное меню - выберите действие:");
         }
     }
 
     private void handleCreateReminder(String command, long chatId) {
         try {
+            if ("назад".equalsIgnoreCase(command.trim()) || "отмена".equalsIgnoreCase(command.trim())) {
+                outputProvider.output("❌ Отмена создания напоминания");
+                menuManager.showMenu();
+                UserSession.setState(chatId, UserState.IN_MENU);
+                return;
+            }
+
             ReminderParser.ParseResult result = ReminderParser.parse(command);
 
             if (result != null && result.getTriggerTime() != null && !result.getText().isEmpty()) {
                 Reminder reminder = new Reminder(chatId, result.getText(), result.getTriggerTime());
 
                 try {
-                    // Сохраняем в базу данных
                     ReminderStorage.add(reminder);
-
-                    // Планируем отправку
                     reminderScheduler.schedule(reminder);
 
                     String formattedTime = result.getTriggerTime().format(DATE_TIME_FORMATTER);
                     outputProvider.output("✅ Напоминание успешно установлено!");
-                    outputProvider.output(" Дата и время: " + formattedTime);
-                    outputProvider.output(" Текст: \"" + result.getText() + "\"");
+                    outputProvider.output("Дата и время: " + formattedTime);
+                    outputProvider.output("Текст: \"" + result.getText() + "\"");
                     outputProvider.output("⏰ Я напомню вам в указанное время.");
-
-                    // сколько напоминаний у пользователя сейчас
-                    var allReminders = ReminderStorage.getAllByChatId(chatId);
-                    System.out.println(" Всего напоминаний у пользователя " + chatId + ": " + allReminders.size());
-                    for (Reminder r : allReminders) {
-                        System.out.println("  - " + r.getTriggerTime() + ": " + r.getMessage());
-                    }
 
                     menuManager.showMenu();
                     UserSession.setState(chatId, UserState.IN_MENU);
@@ -125,15 +131,124 @@ public class CommandProcessor {
                 }
             } else {
                 outputProvider.output("❌ Не удалось распознать напоминание.");
-                outputProvider.output(" Формат: напомни [дата] [время] [сообщение]");
-                outputProvider.output("📌 Примеры: \n" +
-                        "• напомни через 5 минут выпить воды \n" +
+                outputProvider.output("Формат: напомни [дата] [время] [сообщение]");
+                outputProvider.output("\uD83D\uDCCC Примеры:\n" +
+                        "• напомни через 5 минут выпить воды\n" +
                         "• напомни завтра в 15:00 позвонить маме");
+                outputProvider.output("Или введите 'назад' для возврата в меню");
             }
         } catch (Exception e) {
             System.err.println("❌ Ошибка при обработке напоминания: " + e.getMessage());
             e.printStackTrace();
-            outputProvider.output("⚠ Произошла ошибка. Попробуйте снова.");
+            outputProvider.output("❌ Произошла ошибка. Попробуйте снова.");
+        }
+    }
+
+    private void handleEditingReminderAction(String command, long chatId) {
+        String cmd = command.trim().toLowerCase();
+
+        if ("1".equals(command.trim()) || "редактировать".equals(cmd)) {
+            outputProvider.output("Введите новое напоминание в формате: напомни [дата] [время] [сообщение]");
+            outputProvider.output("Или введите 'отмена' ");
+            UserSession.setState(chatId, UserState.EDITING_REMINDER);
+        }
+        else if ("2".equals(command.trim()) || "удалить".equals(cmd)) {
+            Reminder selectedReminder = UserSession.getSelectedReminder(chatId);
+            if (selectedReminder != null) {
+                outputProvider.output("Подтвердите удаление напоминания:");
+                outputProvider.output("Текст: \"" + selectedReminder.getMessage() + "\"");
+                outputProvider.output("Введите 'да' для удаления или 'нет' для отмены");
+                UserSession.setState(chatId, UserState.DELETING_REMINDER);
+            } else {
+                outputProvider.output("❌ Напоминание не найдено.");
+                menuManager.showMenu();
+                UserSession.setState(chatId, UserState.IN_MENU);
+            }
+        }
+        else if ("3".equals(command.trim()) || "назад к списку".equals(cmd) || "назад".equals(cmd)) {
+            menuManager.showRemindersMenu(chatId);
+            UserSession.setState(chatId, UserState.VIEWING_REMINDERS);
+        }
+        else if ("отмена".equals(cmd)) {
+            outputProvider.output("❌ Отмена действия.");
+            menuManager.showRemindersMenu(chatId);
+            UserSession.setState(chatId, UserState.VIEWING_REMINDERS);
+        }
+        else {
+            handleEditingReminderText(command, chatId);
+        }
+    }
+
+    private void handleEditingReminderText(String command, long chatId) {
+        if ("отмена".equalsIgnoreCase(command.trim())) {
+            outputProvider.output("❌ Отмена редактирования.");
+            menuManager.showRemindersMenu(chatId);
+            UserSession.setState(chatId, UserState.VIEWING_REMINDERS);
+            return;
+        }
+
+        try {
+            Reminder selectedReminder = UserSession.getSelectedReminder(chatId);
+            if (selectedReminder == null) {
+                outputProvider.output("❌ Напоминание не найдено.");
+                menuManager.showMenu();
+                UserSession.setState(chatId, UserState.IN_MENU);
+                return;
+            }
+
+            ReminderParser.ParseResult result = ReminderParser.parse(command);
+
+            if (result != null && result.getTriggerTime() != null && !result.getText().isEmpty()) {
+                Reminder updatedReminder = new Reminder(chatId, result.getText(), result.getTriggerTime());
+                updatedReminder.setId(selectedReminder.getId());
+
+                ReminderStorage.update(selectedReminder.getId(), chatId, updatedReminder);
+
+                String formattedTime = result.getTriggerTime().format(DATE_TIME_FORMATTER);
+                outputProvider.output("✅ Напоминание успешно обновлено!");
+                outputProvider.output("Новая дата и время: " + formattedTime);
+                outputProvider.output("Новый текст: \"" + result.getText() + "\"");
+
+                menuManager.showMenu();
+                UserSession.setState(chatId, UserState.IN_MENU);
+            } else {
+                outputProvider.output("❌ Не удалось распознать новое напоминание.");
+                outputProvider.output("Формат: напомни [дата] [время] [сообщение]");
+                outputProvider.output("Или введите 'отмена' ");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Ошибка при обновлении напоминания: " + e.getMessage());
+            outputProvider.output("❌ Ошибка при обновлении напоминания: " + e.getMessage());
+        }
+    }
+
+    private void handleDeleteReminder(String command, long chatId) {
+        Reminder selectedReminder = UserSession.getSelectedReminder(chatId);
+        if (selectedReminder == null) {
+            outputProvider.output("❌ Напоминание не найдено.");
+            menuManager.showMenu();
+            UserSession.setState(chatId, UserState.IN_MENU);
+            return;
+        }
+
+        String cmd = command.trim().toLowerCase();
+
+        if ("да".equals(cmd) || "подтвердить".equals(cmd) || "yes".equals(cmd)) {
+            try {
+                ReminderStorage.delete(selectedReminder.getId(), chatId);
+                outputProvider.output("✅ Напоминание успешно удалено.");
+                menuManager.showMenu();
+                UserSession.setState(chatId, UserState.IN_MENU);
+            } catch (Exception e) {
+                System.err.println("Ошибка при удалении: " + e.getMessage());
+                outputProvider.output("❌ Ошибка при удалении напоминания: " + e.getMessage());
+            }
+        } else if ("нет".equals(cmd) || "отмена".equals(cmd) || "no".equals(cmd)) {
+            outputProvider.output("Удаление отменено.");
+            menuManager.showRemindersMenu(chatId);
+            UserSession.setState(chatId, UserState.VIEWING_REMINDERS);
+        } else {
+            outputProvider.output("Пожалуйста, подтвердите удаление. Введите 'да' или 'нет'.");
         }
     }
 

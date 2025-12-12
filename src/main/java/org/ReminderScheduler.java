@@ -59,7 +59,6 @@ public class ReminderScheduler {
         System.out.println("✅ Все активные напоминания запланированы");
     }
 
-    // Метод для корректного завершения работы
     public void shutdown() {
         System.out.println(" Остановка планировщика напоминаний...");
         scheduler.shutdown();

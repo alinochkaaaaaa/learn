@@ -3,5 +3,8 @@ package org;
 public enum UserState {
     MAIN_MENU,
     IN_MENU,
-    CREATING_REMINDER
+    CREATING_REMINDER,
+    VIEWING_REMINDERS,
+    EDITING_REMINDER,
+    DELETING_REMINDER
 }

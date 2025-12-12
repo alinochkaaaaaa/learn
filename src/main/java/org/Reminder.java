@@ -6,6 +6,7 @@ public class Reminder {
     private final long chatId;
     private final String message;
     private final LocalDateTime triggerTime;
+    private String id;
 
     public Reminder(long chatId, String message, LocalDateTime triggerTime) {
         this.chatId = chatId;
@@ -25,10 +26,19 @@ public class Reminder {
         return triggerTime;
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
     @Override
     public String toString() {
         return "Reminder{" +
-                "chatId=" + chatId +
+                "id='" + id + '\'' +
+                ", chatId=" + chatId +
                 ", message='" + message + '\'' +
                 ", triggerTime=" + triggerTime +
                 '}';
