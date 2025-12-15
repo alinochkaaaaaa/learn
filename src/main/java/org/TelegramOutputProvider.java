@@ -13,6 +13,10 @@ public class TelegramOutputProvider implements OutputProvider {
         System.out.println(" TelegramOutputProvider создан с токеном: " + botToken.substring(0, Math.min(10, botToken.length())) + "...");
     }
 
+    public String getBotToken() {
+        return botToken;
+    }
+
     public void setCurrentChatId(Long chatId) {
         this.currentChatId = chatId;
     }
@@ -100,12 +104,12 @@ public class TelegramOutputProvider implements OutputProvider {
     }
 
     private void sendTelegramMessageWithMainMenu(Long chatId, String text) {
-        String keyboard = "{\"keyboard\":[[\"Старт\",\"Меню\"],[\"Помощь\",\"Выход\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+        String keyboard = "{\"keyboard\":[[\"Старт\",\"Меню\"],[\"Помощь\",\"Дни рождения\"],[\"Выход\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
         sendTelegramMessage(chatId, text, keyboard);
     }
 
     private void sendTelegramMessageWithMenu(Long chatId, String text) {
-        String keyboard = "{\"keyboard\":[[\"Информация\",\"Создать напоминание\"],[\"Мои напоминания\",\"Назад\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+        String keyboard = "{\"keyboard\":[[\"Информация\",\"Создать напоминание\"],[\"Мои напоминания\",\"Дни рождения\"],[\"Назад\"]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
         sendTelegramMessage(chatId, text, keyboard);
     }
 }

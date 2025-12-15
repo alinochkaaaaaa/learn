@@ -9,16 +9,15 @@ public class Main {
     public static void main(String[] args) {
 
         if (BOT_TOKEN == null || BOT_TOKEN.isEmpty()) {
-            System.err.println("❌ Ошибка: TELEGRAM_BOT_TOKEN не установлен!");
+            System.err.println(" Ошибка: TELEGRAM_BOT_TOKEN не установлен!");
             System.exit(1);
         }
 
         System.out.println(" MongoDB connection string: " + MONGODB_CONNECTION_STRING);
 
         try {
-            // Инициализация хранилища
             ReminderStorage.initialize(MONGODB_CONNECTION_STRING);
-            System.out.println(" Хранилище инициализировано");
+            BirthdayStorage.initialize(MONGODB_CONNECTION_STRING);
 
             if (args.length > 0 && "telegram".equals(args[0])) {
                 startTelegramBot();
@@ -26,7 +25,7 @@ public class Main {
                 System.out.println(" Для запуска Telegram бота используйте: java -jar app.jar telegram");
             }
         } catch (Exception e) {
-            System.err.println("❌ Ошибка при инициализации: " + e.getMessage());
+            System.err.println(" Ошибка при инициализации: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
@@ -37,15 +36,16 @@ public class Main {
             TelegramInputProvider telegramInput = new TelegramInputProvider();
             TelegramOutputProvider telegramOutput = new TelegramOutputProvider(BOT_TOKEN);
             ReminderScheduler reminderScheduler = new ReminderScheduler(telegramOutput);
+            BirthdayManager birthdayManager = new BirthdayManager(telegramOutput); // Создаем BirthdayManager
 
-            // Загрузка и планирование активных напоминаний при запуске
             reminderScheduler.scheduleAllActiveReminders();
-            System.out.println("✅ Активные напоминания загружены и запланированы");
+            System.out.println(" Активные напоминания загружены и запланированы");
 
             MenuManager menuManager = new MenuManager(telegramInput, telegramOutput, reminderScheduler);
-            CommandProcessor processor = new CommandProcessor(telegramInput, telegramOutput, menuManager, reminderScheduler);
+            // Передаем birthdayManager в CommandProcessor
+            CommandProcessor processor = new CommandProcessor(telegramInput, telegramOutput, menuManager, reminderScheduler, birthdayManager);
 
-            SimpleTelegramBot bot = new SimpleTelegramBot(BOT_TOKEN, telegramInput, telegramOutput, reminderScheduler);
+            SimpleTelegramBot bot = new SimpleTelegramBot(BOT_TOKEN, telegramInput, telegramOutput, reminderScheduler, birthdayManager);
             bot.setProcessor(processor);
             bot.start();
 
@@ -62,7 +62,7 @@ public class Main {
                 System.out.println(" Бот остановлен");
             }
         } catch (Exception e) {
-            System.err.println("❌ Ошибка при запуске бота: " + e.getMessage());
+            System.err.println(" Ошибка при запуске бота: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
