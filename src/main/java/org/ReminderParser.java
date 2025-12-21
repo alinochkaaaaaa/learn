@@ -15,7 +15,6 @@ public class ReminderParser {
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern DATE_PATTERN = Pattern.compile("(\\d{1,2})[./](\\d{1,2})(?:[./](\\d{2,4}))?");
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     public static class ParseResult {
         private final LocalDateTime triggerTime;
@@ -64,14 +63,14 @@ public class ReminderParser {
                     triggerTime = now.plusDays(amount);
                 }
 
-                System.out.println(" Распознан относительный формат: через " + amount + " " + unit);
-                System.out.println("   Время срабатывания: " + triggerTime);
-                System.out.println("   Текст: \"" + reminderText + "\"");
+                if (!isValidReminderTime(triggerTime)) {
+                    return null;
+                }
 
                 return new ParseResult(triggerTime, reminderText);
 
             } catch (Exception e) {
-                System.err.println("❌ Ошибка парсинга относительного времени: " + e.getMessage());
+                System.err.println(" Ошибка парсинга относительного времени: " + e.getMessage());
             }
         }
 
@@ -82,22 +81,16 @@ public class ReminderParser {
                 int minute = Integer.parseInt(timeMatcher.group(2));
                 reminderText = timeMatcher.group(3).trim();
 
-                if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
-                    time = LocalTime.of(hour, minute);
-                    if (time.isBefore(now.toLocalTime())) {
-                        date = date.plusDays(1);
-                        System.out.println("⏰ Время уже прошло, переношу на завтра");
-                    }
+
+                LocalDateTime triggerTime = LocalDateTime.of(date, time);
+                if (!isValidReminderTime(triggerTime)) {
+                    return null;
                 }
 
-                System.out.println("✅ Распознано время: " + time);
-                System.out.println("   Дата: " + date);
-                System.out.println("   Текст: \"" + reminderText + "\"");
-
-                return new ParseResult(LocalDateTime.of(date, time), reminderText);
+                return new ParseResult(triggerTime, reminderText);
 
             } catch (Exception e) {
-                System.err.println("❌ Ошибка парсинга времени: " + e.getMessage());
+                System.err.println(" Ошибка парсинга времени: " + e.getMessage());
             }
         }
 
@@ -121,14 +114,15 @@ public class ReminderParser {
                         Integer.parseInt(dateMatcher.group(3)) :
                         LocalDate.now().getYear();
 
-                if (year < 100) year += 2000;
+                if (year < 100) {
+                    year += 2000;
+                }
 
                 date = LocalDate.of(year, month, day);
                 rest = rest.substring(dateMatcher.end()).trim();
-                System.out.println(" Распознана дата: " + date);
 
             } catch (Exception e) {
-                System.err.println("❌ Ошибка парсинга даты: " + e.getMessage());
+                System.err.println(" Ошибка парсинга даты: " + e.getMessage());
             }
         }
 
@@ -143,10 +137,9 @@ public class ReminderParser {
                     time = LocalTime.of(hour, minute);
                 }
 
-                System.out.println("✅ Распознано время: " + time);
 
             } catch (Exception e) {
-                System.err.println("❌ Ошибка парсинга времени: " + e.getMessage());
+                System.err.println(" Ошибка парсинга времени: " + e.getMessage());
             }
         } else {
             time = DEFAULT_TIME;
@@ -154,14 +147,39 @@ public class ReminderParser {
         }
 
         if (reminderText.isEmpty()) {
-            System.err.println("❌ Текст напоминания пустой");
+            System.err.println(" Текст напоминания пустой");
             return null;
         }
 
         LocalDateTime triggerTime = LocalDateTime.of(date, time);
-        System.out.println("✅ Итоговое время: " + triggerTime);
-        System.out.println("✅ Текст: \"" + reminderText + "\"");
+
+        if (!isValidReminderTime(triggerTime)) {
+            return null;
+        }
 
         return new ParseResult(triggerTime, reminderText);
+    }
+
+    private static boolean isValidReminderTime(LocalDateTime triggerTime) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime maxPastTime = now.minusMinutes(5);
+        LocalDateTime maxFutureTime = now.plusYears(5);
+
+        if (triggerTime.isBefore(maxPastTime)) {
+            System.err.println(" Ошибка: Нельзя установить напоминание более чем на 5 минут в прошлом");
+            return false;
+        }
+
+        if (triggerTime.isAfter(maxFutureTime)) {
+            System.err.println(" Ошибка: Нельзя установить напоминание более чем на 5 лет в будущем");
+            return false;
+        }
+
+        if (triggerTime.isBefore(now.minusMinutes(1))) {
+            System.err.println(" Ошибка: Напоминание должно быть установлено хотя бы на 1 минуту в будущем");
+            return false;
+        }
+
+        return true;
     }
 }
